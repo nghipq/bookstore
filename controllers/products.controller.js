@@ -9,17 +9,17 @@ module.exports.allProducts = async (req, res) => {
     await Product.find()
             .then(product => {
                 if(!product.length) {
-                    res.status(404).json({
+                    return res.status(http.NOT_FOUND).json({
                         success: false,
                         message: "No product found!"
                     })
                 } else {
-                    res.status(200).json({
+                    return res.status(http.OK).json({
                         success: true,
                         product
                     })
                 }
-            }).catch(() => res.status(404).json({
+            }).catch(() => res.status(http.NOT_FOUND).json({
                 success: false,
                 message: "No product found!"
             }))
@@ -35,10 +35,10 @@ module.exports.createProduct = async (req, res) => {
     }
 
     await Product.create(newProduct)
-        .then(() => res.status(200).json({
+        .then(() => res.status(http.OK).json({
             success: true,
             product: newProduct
-        })).catch(() => res.status(400).json({
+        })).catch(() => res.status(http.BAD_REQUEST).json({
             success: false,
             message: "Cannot create this product"
         }))
@@ -48,19 +48,136 @@ module.exports.createProduct = async (req, res) => {
  * get product by id
  */
 module.exports.getById = async (req, res) => {
-    res.send("get product by id")
+    await Product.findById(req.params.id.toString().trim())
+        .then(product => {
+            if(product) {
+                return res.status(http.OK).json({
+                    success: true,
+                    product,
+                })
+            } else {
+                return res.status(http.NOT_FOUND).json({
+                    success: false,
+                    message: "No product found!"
+                })
+            }
+        }).catch(() => res.status(http.NOT_FOUND).json({
+            success: false,
+            message: "No product found!"
+        }))
 }
 
 /**
  * delete product by id
  */
 module.exports.delById = async (req, res) => {
-    res.send("delete product by id")
+    await Product.findByIdAndRemove(req.params.id.toString().trim())
+        .then(product => {
+            if(product) {
+                return res.status(http.OK).json({
+                    success: true,
+                    product
+                })
+            } else {
+                return res.status(http.NOT_FOUND).json({
+                    success: false,
+                    message: "No product found!"
+                })
+            }
+        }).catch(() => {
+            res.status(http.NOT_FOUND).json({
+                success: false,
+                message: "Failed to delete product"
+            })
+        })
 } 
 
 /**
- * sort product by price
+ * modify product by id
  */
-module.exports.sortByPrice = async (req, res) => {
-    res.send("sort product by price")
+module.exports.modifyById = async (req, res) => {
+    const id = req.params.id.toString().trim()
+    await Product.findById(id)
+        .then(product => {
+            if(product) {
+                await Product.findByIdAndUpdate(id, req.body)
+                    .then((product) => res.status(http.OK).json({
+                        success: true,
+                        product
+                    })).catch(() => res.status(http.BAD_REQUEST).json({
+                        success: false,
+                        message: "Failed to update product!"
+                    }))
+            } else {
+                return res.status(http.NOT_FOUND).json({
+                    success: false,
+                    message: "No product found!"
+                })
+            }
+        }).catch(() => res.status(http.NOT_MODIFIED).json({
+            success: false,
+            message: "Failed to update product!"
+        }))
+}
+
+/**
+ * filter product by price
+ */
+module.exports.filterByPrice = async (req, res) => {
+    const minPrice = (req.query["price-min"]) ? req.query["price-min"] : '0'
+    const maxPrice = (req.query["price-max"]) ? req.query["price-max"] : '0'
+
+    if(!maxPrice) {
+        return res.status(httpStatus.BAD_REQUEST).json({
+            success: false,
+            message: "Max price much be greater than 0"
+        });
+    };
+
+    await Product.find({ price: { $gte: maxPrice, $lte: minPrice }})        
+        .exec((err, products) => {
+            if(err) {                
+                return res.status(httpStatus.BAD_REQUEST).json({
+                    success: false,
+                    message: "Error query request to sort!"
+                });
+            };            
+
+            if(!products) {
+                return res.status(httpStatus.NOT_FOUND).json({
+                    success: false,
+                    message: "No products found between this price range"
+                });
+            };
+
+            return res.status(httpStatus.OK).json({
+                success: true,
+                products
+            });
+        });        
+}
+
+/**
+ * search product by name
+ */
+module.exports.searchByName = async (req, res) => {
+    const name = (req.query.name) ? req.query.name.toString() : '';
+    const products = await Product.find()
+                        .then(products => {
+                            products.filter(product => product.name.indexOf(name) != -1)
+                        }).catch(() => res.status(http.NOT_FOUND).json({
+                            success: false,
+                            message: "No product found!"
+                        }))
+    if(!products.length) {
+        return res.status(http.NOT_FOUND).json({
+            success: false,
+            message:"No product found!"
+        })
+    } else {
+        return res.status(http.OK).json({
+            success: true,
+            products
+        })
+    }
 }
