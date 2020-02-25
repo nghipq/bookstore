@@ -158,6 +158,37 @@ module.exports.filterByPrice = async (req, res) => {
 }
 
 /**
+ * Sort product by type
+ */
+module.exports.sortByType = async (req, res) => {
+    const type = req.query.type
+    const from = req.query.from
+
+    await Product.find()
+            .then(products => {
+                if(from == "min") {
+                    return res.status(http.OK).json({
+                        success: true,
+                        products: products.sort((a, b) => (a[type] > b[type]) ? 1 : -1)
+                    })
+                } else if (from == "max"){
+                    return res.status(http.OK).json({
+                        success: true,
+                        products: products.sort((a, b) => (a[type] < b[type]) ? 1 : -1)
+                    })
+                } else {
+                    return res.status(http.BAD_REQUEST).json({
+                        success: false,
+                        message: "Failed to sort product!"
+                    })
+                }
+            }).catch(() => res.status(http.BAD_REQUEST).json({
+                success: false,
+                message: "Failed to sort product!"
+            }))
+}
+
+/**
  * search product by name
  */
 module.exports.searchByName = async (req, res) => {
