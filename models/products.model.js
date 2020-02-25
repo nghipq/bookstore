@@ -23,7 +23,7 @@ const productSchema = mongoose.Schema({
         maxlength: 10,
         match: /[0-9]/
     },
-    desciption: {
+    description: {
         type: String,
         require: true,
         trim: true
